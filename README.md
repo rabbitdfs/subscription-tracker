@@ -158,16 +158,17 @@ erDiagram
         varchar name
         varchar url
         bigint amount_minor "цена в копейках или центах"
-        char currency "RUB, USD, EUR"
+        varchar currency "RUB, USD, EUR"
         varchar period "month или year"
         date next_charge_date
         boolean is_active
+        timestamptz deleted_at "дата удаления, пусто если не удалена"
         timestamptz created_at
     }
     rates {
         bigint id PK
         varchar source "coingecko или cbr"
-        char currency "USDT, USD, EUR"
+        varchar currency "USDT, USD, EUR"
         numeric rate_to_rub
         timestamptz fetched_at
     }
@@ -176,7 +177,7 @@ erDiagram
         bigint subscription_id FK
         date charge_date
         bigint amount_minor
-        char currency
+        varchar currency
         numeric rate_to_rub "курс на день списания"
         bigint rub_amount_minor "сумма в копейках"
         boolean is_approx "посчитано по запасному курсу"
@@ -189,6 +190,8 @@ erDiagram
 - `subscriptions` - подписки. Цена записана целым числом в копейках или центах. С дробными числами при сложении бывают ошибки в копейках, с целыми таких ошибок нет.
 - `rates` - курсы, которые сервер скачал из CoinGecko и ЦБ. Каждое обновление добавляет новую строку, старые остаются. Поэтому всегда можно узнать, какой был курс в любой день.
 - `charges` - история списаний. Курс и сумма в рублях записываются в день списания и больше не меняются. Если курс потом изменится, история останется прежней.
+- Валюта записана строкой до 4 символов, чтобы помещался и `USDT`, а не только `RUB`, `USD`, `EUR`.
+- Удаленная подписка не стирается из базы: в поле `deleted_at` ставится дата удаления. Из списка у пользователя она пропадает, но история ее списаний остается.
 
 Индексы. Индекс работает как оглавление в книге: по нему база сразу находит нужные строки и не перебирает всю таблицу.
 | Индекс | Для чего нужен |
