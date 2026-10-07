@@ -130,7 +130,80 @@
 
 ### Схема базы данных
 
-Раздел в работе: Никита.
+Все данные сервиса лежат в базе PostgreSQL. Таблиц пять, связи между ними показаны на схеме.
+
+```mermaid
+erDiagram
+    users ||--o{ payment_methods : "имеет"
+    users ||--o{ subscriptions : "имеет"
+    payment_methods ||--o{ subscriptions : "оплачивает"
+    subscriptions ||--o{ charges : "списания"
+    users {
+        bigint id PK
+        varchar email UK
+        varchar password_hash
+        timestamptz created_at
+    }
+    payment_methods {
+        bigint id PK
+        bigint user_id FK
+        varchar name
+        varchar kind "rub_card или foreign_card"
+        numeric markup_percent "комиссия пополнения"
+    }
+    subscriptions {
+        bigint id PK
+        bigint user_id FK
+        bigint payment_method_id FK
+        varchar name
+        varchar url
+        bigint amount_minor "цена в копейках или центах"
+        varchar currency "RUB, USD, EUR"
+        varchar period "month или year"
+        date next_charge_date
+        boolean is_active
+        timestamptz deleted_at "дата удаления, пусто если не удалена"
+        timestamptz created_at
+    }
+    rates {
+        bigint id PK
+        varchar source "coingecko или cbr"
+        varchar currency "USDT, USD, EUR"
+        numeric rate_to_rub
+        timestamptz fetched_at
+    }
+    charges {
+        bigint id PK
+        bigint subscription_id FK
+        date charge_date
+        bigint amount_minor
+        varchar currency
+        numeric rate_to_rub "курс на день списания"
+        bigint rub_amount_minor "сумма в копейках"
+        boolean is_approx "посчитано по запасному курсу"
+    }
+```
+
+Что в какой таблице:
+- `users` - пользователи. Пароль в открытом виде не хранится, только его хеш.
+- `payment_methods` - карты пользователя. У иностранной карты тут же записан процент, который берет сервис пополнения.
+- `subscriptions` - подписки. Цена записана целым числом в копейках или центах. С дробными числами при сложении бывают ошибки в копейках, с целыми таких ошибок нет.
+- `rates` - курсы, которые сервер скачал из CoinGecko и ЦБ. Каждое обновление добавляет новую строку, старые остаются. Поэтому всегда можно узнать, какой был курс в любой день.
+- `charges` - история списаний. Курс и сумма в рублях записываются в день списания и больше не меняются. Если курс потом изменится, история останется прежней.
+- Валюта записана строкой до 4 символов, чтобы помещался и `USDT`, а не только `RUB`, `USD`, `EUR`.
+- Удаленная подписка не стирается из базы: в поле `deleted_at` ставится дата удаления. Из списка у пользователя она пропадает, но история ее списаний остается.
+
+Индексы. Индекс работает как оглавление в книге: по нему база сразу находит нужные строки и не перебирает всю таблицу.
+| Индекс | Для чего нужен |
+|---|---|
+| `users(email)`, уникальный | найти пользователя при входе и не дать зарегистрировать одну почту дважды |
+| `payment_methods(user_id)` | показать карты пользователя |
+| `subscriptions(user_id)` | показать подписки пользователя на главной странице |
+| `subscriptions(next_charge_date)`, только для активных подписок | ночью быстро найти подписки, которые списываются сегодня |
+| `charges(subscription_id, charge_date)` | показать историю расходов по месяцам |
+| `rates(source, currency, fetched_at)` | найти последний курс или курс на нужную дату |
+
+Почему база справится. По этапу 2 в самый загруженный час приходит около 1,4 запроса в секунду. Каждый запрос находит данные по индексу и читает немного строк: у пользователя в среднем 7 подписок и около 84 списаний за год. Самая большая таблица `charges` за 5 лет дойдет примерно до 13 млн строк, но по индексу нужные строки в ней находятся за миллисекунды. Ночная задача тоже идет по индексу и берет только сегодняшние списания (около 7 000), а не все 210 000 подписок подряд.
 
 ### API
 
