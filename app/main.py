@@ -4,6 +4,7 @@ import time
 from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 from app import auth
+from app import pricing
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("app")
@@ -28,3 +29,4 @@ def health():
     return {"status": "ok"}
 
 app.include_router(auth.router)
+app.include_router(pricing.router)
