@@ -1,9 +1,11 @@
 import logging
 import os
 import time
+from pathlib import Path
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
-from app import auth
+from app import auth, pages
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("app")
@@ -28,3 +30,13 @@ def health():
     return {"status": "ok"}
 
 app.include_router(auth.router)
+
+# Подключаем страницы входа, регистрации и главную
+app.include_router(pages.router)
+
+# Разрешаем браузеру загружать CSS и JavaScript
+app.mount(
+    "/static",
+    StaticFiles(directory=Path(__file__).parent / "static"),
+    name="static",
+)

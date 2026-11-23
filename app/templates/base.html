@@ -1,0 +1,23 @@
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Учет подписок{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <a href="/" class="logo">Учет подписок</a>
+    {% if request.session.get("user_id") %}
+      <button type="button" id="logout" class="secondary">Выйти</button>
+    {% endif %}
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <script src="/static/api.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
