@@ -1,8 +1,70 @@
 
 {% extends "base.html" %}
+{% block title %}Мои подписки{% endblock %}
 {% block content %}
-<div class="card">
-  <h1>Вы вошли</h1>
-  <p>Здесь будет главная страница: подписки, карты и сумма в рублях.</p>
-</div>
+<section class="card">
+  <h2>Расходы в рублях</h2>
+  <p class="total">В месяц: <b id="month-total">…</b> &nbsp; В год: <b id="year-total">…</b></p>
+  <p id="rate-info" class="muted"></p>
+</section>
+
+<section class="card">
+  <h2>Подписки</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Название</th><th>Цена</th><th>В рублях</th><th>Как часто</th>
+          <th>Следующее списание</th><th>Карта</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="subscriptions"></tbody>
+    </table>
+  </div>
+  <p id="no-subscriptions" class="muted" hidden>Подписок пока нет. Добавьте первую подписку.</p>
+
+  <h3 id="sub-form-title">Добавить подписку</h3>
+  <p id="no-cards" class="warning" hidden>Сначала добавьте карту в разделе «Мои карты» ниже.</p>
+  <form id="sub-form">
+    <input type="hidden" id="sub-id">
+    <label>Название <input id="sub-name" maxlength="100" required></label>
+    <label>Ссылка <input id="sub-url" type="url" placeholder="https://..."></label>
+    <label>Цена <input id="sub-amount" type="number" step="0.01" min="0.01" required></label>
+    <label>Карта <select id="sub-card"></select></label>
+    <label>Валюта <select id="sub-currency"></select></label>
+    <label>Как часто
+      <select id="sub-period">
+        <option value="month">Раз в месяц</option>
+        <option value="year">Раз в год</option>
+      </select>
+    </label>
+    <label>Следующее списание <input id="sub-date" type="date" required></label>
+    <p id="sub-error" class="error"></p>
+    <button type="submit">Сохранить</button>
+    <button type="button" id="sub-cancel" class="secondary" hidden>Отмена</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Мои карты</h2>
+  <ul id="cards" class="cards"></ul>
+  <h3>Добавить карту</h3>
+  <form id="card-form">
+    <label>Название <input id="card-name" maxlength="100" placeholder="Например, зарплатная" required></label>
+    <label>Тип
+      <select id="card-kind">
+        <option value="rub_card">Российская (рубли)</option>
+        <option value="foreign_card">Иностранная (доллары и евро)</option>
+      </select>
+    </label>
+    <label id="card-markup-label" hidden>Комиссия сервиса пополнения, %
+      <input id="card-markup" type="number" step="0.01" min="0" max="100" value="0">
+    </label>
+    <p id="card-error" class="error"></p>
+    <button type="submit">Добавить карту</button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="/static/main.js"></script>
 {% endblock %}
