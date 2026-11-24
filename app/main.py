@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app import pages
 from app import auth
+from app import payment_methods, subscriptions
 from app import pricing
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -35,3 +36,6 @@ def health():
 
 app.include_router(auth.router)
 app.include_router(pricing.router)
+
+app.include_router(payment_methods.router)
+app.include_router(subscriptions.router)
