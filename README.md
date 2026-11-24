@@ -1,5 +1,7 @@
 # Учет подписок с пересчетом по курсам
 
+[![CI](https://github.com/rabbitdfs/subscription-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/rabbitdfs/subscription-tracker/actions/workflows/ci.yml)
+
 Курсовой проект по дисциплине "Конструирование программного обеспечения", СПбПУ.
 
 ## Команда
@@ -514,3 +516,65 @@ flowchart LR
 - Чтобы не ходить за курсом в базу на каждый запрос, каждый сервер держит последний курс у себя в памяти и обновляет его раз в 5 минут.
 
 Без кэша сервер спрашивал бы курс при каждом открытии страницы, а это около 345 000 запросов в сутки вместо 25. При таком потоке внешний API заблокировал бы нас в первые же минуты.
+
+## Этап 4. Кодирование и CI
+
+### Как запустить
+
+Нужны Python 3.12 и PostgreSQL. На этапе 8 все это заменит одна команда `docker compose up`.
+
+1. Создать в PostgreSQL пустую базу `subscriptions`.
+2. Скопировать файл `.env.example` в `.env` и вписать туда свой пароль от PostgreSQL.
+3. В папке проекта создать окружение Python и включить его:
+   - Windows: `py -3.12 -m venv .venv`, потом `.venv\Scripts\activate`;
+   - macOS: `python3.12 -m venv .venv`, потом `source .venv/bin/activate`.
+4. Дальше команды одинаковые:
+
+| Что сделать | Команда |
+|---|---|
+| поставить библиотеки | `pip install -r requirements.txt` |
+| создать таблицы | `python -m alembic upgrade head` |
+| запустить сервер | `python -m uvicorn app.main:app --reload` |
+| запустить фоновую задачу с курсами (во втором терминале) | `python -m app.worker` |
+| запустить тесты | `python -m pytest` |
+
+Сайт открывается на http://localhost:8000, описание API на http://localhost:8000/docs.
+
+### Как устроен код
+
+| Файл | Что делает | Кто писал |
+|---|---|---|
+| `app/main.py` | создает приложение и пишет лог запросов; свою часть в нем подключал каждый | Мирослав, все |
+| `app/rates.py` | получает курсы из CoinGecko и ЦБ, при ошибке еще 2 попытки | Мирослав |
+| `app/worker.py` | фоновая задача: раз в час курс USDT, раз в сутки курсы ЦБ | Мирослав |
+| `app/db.py`, `app/models.py`, `migrations/` | подключение к базе, таблицы и миграция, которая их создает | Никита |
+| `app/pricing.py` | расчет в рублях, запасной курс ЦБ, адреса `/api/summary` и `/api/rates` | Никита |
+| `app/auth.py` | регистрация, вход, выход | Елисей |
+| `app/payment_methods.py`, `app/subscriptions.py` | карты и подписки | Елисей |
+| `app/pages.py`, `app/templates/`, `app/static/` | страницы сайта | Артём |
+| `tests/` | тесты | Мирослав, Никита |
+
+Сервер во время запроса пользователя во внешние API не ходит. Курсы скачивает только фоновая задача и кладет в таблицу `rates`, а сервер берет последний курс оттуда.
+
+### Проверка в GitHub Actions
+
+На каждый push и pull request GitHub Actions ставит Python 3.12 и библиотеки и запускает `pytest` (файл `.github/workflows/ci.yml`). Результат виден галочкой у коммита и у PR, а значок в начале README показывает состояние ветки main.
+
+### Логи
+
+Сервер пишет в консоль строку на каждый запрос: метод, адрес, код ответа и за сколько миллисекунд сервер ответил. Например: `2026-11-20 14:05:12,345 INFO GET /api/subscriptions 200 3ms`.
+
+По этим строкам видно, укладывается ли сервер во время ответа из раздела API: например, список подписок и сводка должны отвечать быстрее 200 мс. Фоновая задача пишет в лог каждый сохраненный курс, а если сайт с курсами не ответил, пишет ошибку.
+
+### Кто что сделал
+
+| Задача | Кто | PR |
+|---|---|---|
+| Каркас проекта и CI | Мирослав | [#28](https://github.com/rabbitdfs/subscription-tracker/pull/28) |
+| Модели базы и миграция | Никита | [#30](https://github.com/rabbitdfs/subscription-tracker/pull/30) |
+| Курсы валют и фоновая задача | Мирослав | [#31](https://github.com/rabbitdfs/subscription-tracker/pull/31) |
+| Регистрация и вход | Елисей | [#32](https://github.com/rabbitdfs/subscription-tracker/pull/32) |
+| API карт и подписок | Елисей | [#35](https://github.com/rabbitdfs/subscription-tracker/pull/35) |
+| Расчет в рублях и сводка | Никита | [#34](https://github.com/rabbitdfs/subscription-tracker/pull/34) |
+| Страницы входа и регистрации | Артём | [#33](https://github.com/rabbitdfs/subscription-tracker/pull/33) |
+| Главная страница | Артём | [#36](https://github.com/rabbitdfs/subscription-tracker/pull/36) |
